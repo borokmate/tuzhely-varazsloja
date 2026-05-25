@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A Tűzhegy Varázslója</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=IM+Fell+English:ital@0;1&family=Crimson+Pro:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="app">
+  <div id="header">
+    <svg class="mountain-svg" viewBox="0 0 200 100" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="fireGrad" x1="0%" y1="100%" x2="0%" y2="0%">
+          <stop offset="0%" style="stop-color:#9d0208;stop-opacity:0.8"/>
+          <stop offset="60%" style="stop-color:#e85d04;stop-opacity:0.9"/>
+          <stop offset="100%" style="stop-color:#f48c06;stop-opacity:0.4"/>
+        </linearGradient>
+        <radialGradient id="glowGrad" cx="50%" cy="80%">
+          <stop offset="0%" style="stop-color:#e85d04;stop-opacity:0.3"/>
+          <stop offset="100%" style="stop-color:#9d0208;stop-opacity:0"/>
+        </radialGradient>
+      </defs>
+      <!-- Glow -->
+      <ellipse cx="100" cy="85" rx="80" ry="30" fill="url(#glowGrad)"/>
+      <!-- Mountain left -->
+      <polygon points="10,95 70,20 100,55 80,95" fill="#2a1f10" stroke="#3a2a15" stroke-width="0.5"/>
+      <!-- Mountain right -->
+      <polygon points="70,95 120,15 170,95" fill="#231a0d" stroke="#3a2a15" stroke-width="0.5"/>
+      <!-- Far mountain -->
+      <polygon points="140,95 175,35 200,95" fill="#1a1208" stroke="#2a1f10" stroke-width="0.5"/>
+      <!-- Fire glow at peak -->
+      <ellipse cx="120" cy="15" rx="12" ry="20" fill="url(#fireGrad)" opacity="0.8"/>
+      <!-- Fire flames -->
+      <path d="M115,25 Q112,10 120,0 Q118,8 125,5 Q120,15 128,12 Q122,22 120,25 Z" fill="#f48c06" opacity="0.9"/>
+      <path d="M118,24 Q116,14 122,8 Q120,16 126,13 Q121,21 121,25 Z" fill="#ffd166" opacity="0.7"/>
+      <!-- Snow on far peak -->
+      <path d="M170,40 Q172,35 175,35 Q178,35 180,42 Q176,39 175,40 Q173,38 170,40 Z" fill="rgba(255,255,255,0.3)"/>
+    </svg>
+    <h1>A Tűzhegy<br>Varázslója</h1>
+    <p class="subtitle">Steve Jackson &amp; Ian Livingstone · 1982</p>
+    <div class="divider"><span class="divider-sym">⚔</span></div>
+  </div>
+
+  <!-- MENU SCREEN -->
+  <div id="menu-screen" class="screen active">
+    <p class="menu-description">
+      Egyetlen helyes út vezet el a Varázsló útvesztőjén keresztül.<br>
+      Bátorság, ügyesség, és egy szemernyi szerencse — ez kell a sikerhez.<br>
+      <em>Te vagy a hős.</em>
+    </p>
+    <div class="menu-buttons">
+      <button class="btn btn-primary" onclick="showScreen('setup')">⚔ Új Kaland</button>
+      <button class="btn btn-secondary" id="continue-btn" onclick="continueGame()" style="display:none">↩ Folytatás</button>
+      <button class="btn btn-secondary" onclick="showScreen('rules')">📜 Szabályok</button>
+    </div>
+  </div>
+
+  <!-- SETUP SCREEN -->
+  <div id="setup-screen" class="screen">
+    <div class="divider"><span class="divider-sym">⚔</span></div>
+    <h2 class="setup-title">Kalandlap</h2>
+
+    <div class="setup-panel">
+      <h3>Alaptulajdonságok</h3>
+      <div class="stat-row">
+        <span class="stat-label">Ügyesség</span>
+        <span class="stat-value" id="s-skill">—</span>
