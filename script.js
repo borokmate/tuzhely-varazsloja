@@ -118,3 +118,143 @@ function renderSection(num) {
     eDiv.innerHTML = '';
   }
 
+  // Render choices
+  const cDiv = document.getElementById('choices');
+  const endDiv = document.getElementById('ending-area');
+  cDiv.innerHTML = '';
+  endDiv.innerHTML = '';
+
+  if (para.isVictory) {
+    endDiv.innerHTML = `<div class="ending-banner victory">
+      <h2>🏆 Győzelem!</h2>
+      <p>A Tűzhegy Varázslója legyőzetett. Minden kincse a tiéd!</p>
+      <button class="btn btn-primary btn-small" onclick="confirmRestart()">Új kaland</button>
+    </div>`;
+  } else if (para.isDead || (para.links.length === 0 && !para.isVictory && isDeadEnd(para.text))) {
+    endDiv.innerHTML = `<div class="ending-banner death">
+      <h2>💀 Kalandod véget ért</h2>
+      <p>Visszatér a szellemed a sötétségbe...</p>
+      <button class="btn btn-primary btn-small" onclick="confirmRestart()">Újra próbálkozol</button>
+    </div>`;
+  } else if (para.links && para.links.length > 0) {
+    const choiceTexts = extractChoiceTexts(para.text, para.links);
+    para.links.forEach((lnk, i) => {
+      const label = choiceTexts[i] || `Lapozz a ${lnk}-re`;
+      cDiv.innerHTML += `<button class="choice-btn" onclick="navigate(${lnk})">
+        <span class="choice-arrow">▶</span>
+        <span class="choice-num">${lnk}. §</span>
+        <span>${label}</span>
+      </button>`;
+    });
+  }
+
+  updateSidebar();
+  saveState();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  // Static auto-changes from BOOK data (no API needed)
+  if (para && !para.isDead && !para.isVictory) {
+    const changes = para.autoChanges || [];
+    renderAIPanel({ changes });
+  } else {
+    const aiArea = document.getElementById('ai-parse-area');
+    if (aiArea) aiArea.innerHTML = '';
+  }
+}
+
+function isDeadEnd(text) {
+  const dead = ['kalandod itt véget ért','kalandod véget ért','soha nem lett volna szabad','fogait a nyakadba','hátsó feledbe'];
+  return dead.some(d => text.toLowerCase().includes(d));
+}
+
+function extractChoiceTexts(text, links) {
+  // Try to find short descriptive text near each "lapozz a N-re" occurrence
+  const results = [];
+  const pattern = /([^.!?]*?)\s*lapozz\s+a\s+(\d+)-r[ae]/gi;
+  const found = {};
+  let m;
+  while ((m = pattern.exec(text)) !== null) {
+    const n = parseInt(m[2]);
+    let hint = m[1].trim();
+    // Clean up hint
+    hint = hint.replace(/^[-–,;.\s]+/, '').replace(/^(ha|de|és|vagy)\s+/i, '');
+    hint = hint.slice(0, 60);
+    if (hint.length > 3) found[n] = hint;
+  }
+  links.forEach(l => results.push(found[l] || `Bekezdés ${l}`));
+  return results;
+}
+
+function navigate(num) {
+  if (state.current) state.history.push(state.current);
+  renderSection(num);
+}
+
+function goBack() {
+  if (state.history.length === 0) return;
+  const prev = state.history.pop();
+  state.current = prev;
+  renderSection(prev);
+  state.history.pop(); // renderSection pushes current again, remove it
+}
+
+function gotoSection() {
+  const v = parseInt(document.getElementById('goto-input').value);
+  if (v >= 1 && v <= 400) {
+    state.history.push(state.current);
+    renderSection(v);
+    document.getElementById('goto-input').value = '';
+  } else {
+    notify('1 és 400 közötti számot adj meg', true);
+  }
+}
+
+function confirmRestart() {
+  if (confirm('Biztosan újra kezded? Az eddigi haladás elvész.')) {
+    showScreen('setup');
+  }
+}
+
+// ===== STATS =====
+function modStat(stat, delta) {
+  state[stat] = Math.max(0, Math.min(state[stat + 'Max'], state[stat] + delta));
+  updateSidebar();
+  saveState();
+  if (stat === 'stamina' && state.stamina <= 0) {
+    notify('Életerőd elfogyott! ⚰️', true);
+  }
+}
+
+function updateSidebar() {
+  const stats = ['skill','stamina','luck'];
+  stats.forEach(s => {
+    const v = state[s], mx = state[s+'Max'];
+    document.getElementById('g-' + s).textContent = v + '/' + mx;
+    const pct = mx > 0 ? Math.round(v/mx*100) : 0;
+    document.getElementById('bar-' + s).style.width = pct + '%';
+  });
+
+  // Food
+  const fi = document.getElementById('food-icons');
+  let foodHtml = '';
+  for (let i = 0; i < 10; i++) {
+    foodHtml += `<span class="food-icon${i >= state.food ? ' used' : ''}">🍖</span>`;
+  }
+  fi.innerHTML = foodHtml;
+  document.getElementById('food-count').textContent = state.food + '/10';
+  document.getElementById('eat-btn').disabled = state.food <= 0 || state.stamina >= state.staminaMax;
+
+  // Potion
+  const potNames = { skill: 'Ügyesség Itala', stamina: 'Erő Itala', luck: 'Szerencse Itala' };
+  document.getElementById('potion-name').textContent = potNames[state.potion] || '—';
+  document.getElementById('potion-uses').textContent = state.potionUses + ' adag maradt';
+  document.getElementById('use-potion-btn').disabled = state.potionUses <= 0;
+
+  // Gold
+  const goldEl = document.getElementById('g-gold');
+  if (goldEl) goldEl.textContent = state.gold || 0;
+
+  // Items
+  const itemsList = document.getElementById('items-list');
+  if (itemsList) {
+    if (!state.items) state.items = [];
