@@ -258,3 +258,163 @@ function updateSidebar() {
   const itemsList = document.getElementById('items-list');
   if (itemsList) {
     if (!state.items) state.items = [];
+    if (state.items.length === 0) {
+      itemsList.innerHTML = '<div style="font-size:0.78rem;color:var(--stone-light);margin-bottom:4px;font-style:italic;">Nincs felszerelés</div>';
+    } else {
+      itemsList.innerHTML = state.items.map((it, i) =>
+        `<div class="item-row"><span>${it}</span><button class="item-del" onclick="removeItem(${i})" title="Töröl">✕</button></div>`
+      ).join('');
+    }
+  }
+
+  // Story luck button (show if current para exists and is not dead/victory)
+  const luckArea = document.getElementById('story-luck-area');
+  if (luckArea) {
+    const para = BOOK[String(state.current)];
+    if (para && !para.isDead && !para.isVictory) {
+      luckArea.innerHTML = `<button class="story-luck-btn" onclick="storyTestLuck()">⚡ Tedd próbára Szerencséd! (jelenlegi: ${state.luck})</button>`;
+    } else {
+      luckArea.innerHTML = '';
+    }
+  }
+
+  // History
+  const hl = document.getElementById('history-list');
+  const recent = [...state.history].reverse().slice(0, 15);
+  hl.innerHTML = recent.map((n,i) => `<div class="history-item" onclick="histJump(${n})">
+    <span class="history-arrow">◂</span>
+    <span class="history-num">${n}. §</span>
+    <span style="font-size:0.8rem;color:var(--stone-light);overflow:hidden;white-space:nowrap;text-overflow:ellipsis">
+      ${(BOOK[String(n)]?.text || '').slice(0,40)}…
+    </span>
+  </div>`).join('');
+}
+
+
+// ===== STATIC AUTO-CHANGES =====
+// autoChanges are pre-computed and baked into BOOK data — no API needed.
+// renderAIPanel() is called directly from renderSection() with para.autoChanges.
+
+// (Legacy stub — not used, kept for safety)
+function aiParseSection(paraNum, paraText) {
+  const para = BOOK[String(paraNum)];
+  renderAIPanel({ changes: (para && para.autoChanges) || [] });
+}
+
+
+function renderAIPanel(parsed) {
+  const area = document.getElementById('ai-parse-area');
+  if (!area) return;
+
+  const changes = (parsed && parsed.changes) || [];
+  const error = parsed && parsed.error;
+
+  if (changes.length === 0) {
+    area.innerHTML = `<div class="ai-parse-panel">
+      <div class="ai-parse-header" onclick="this.parentElement.querySelector('.ai-parse-body').style.display = this.parentElement.querySelector('.ai-parse-body').style.display === 'none' ? '' : 'none'">
+        <span class="ai-parse-title">⚡ Automatikus stat-változások</span>
+        <span class="ai-parse-status">✓ Nincs automatikus változás</span>
+      </div>
+      <div class="ai-parse-body" style="display:none">
+        <div class="ai-no-changes">Ezen a bekezdésen nincs beégetett stat-változás.</div>
+      </div>
+    </div>`;
+    return;
+  }
+
+  const rows = changes.map((c, i) => {
+    let valClass = 'set';
+    let valText = '';
+    if (c.type === 'item_add') { valClass = 'pos'; valText = '🎒 +'; }
+    else if (c.type === 'item_remove') { valClass = 'neg'; valText = '🗑 −'; }
+    else if (c.amount > 0) { valClass = 'pos'; valText = '+' + c.amount; }
+    else if (c.amount < 0) { valClass = 'neg'; valText = '' + c.amount; }
+    else { valText = '±' + (c.amount || '?'); }
+
+    return `<div class="ai-change-row">
+      <span class="ai-change-label">${c.label}</span>
+      <span class="ai-change-val ${valClass}">${valText}</span>
+      <button class="ai-apply-btn" id="ai-btn-${i}" onclick="applyAIChange(${i})" title="Alkalmaz">✓ Alkalmaz</button>
+    </div>`;
+  }).join('');
+
+  area.innerHTML = `<div class="ai-parse-panel">
+    <div class="ai-parse-header" onclick="toggleAIPanel()">
+      <span class="ai-parse-title">⚡ Automatikus stat-változások (${changes.length})</span>
+      <span class="ai-parse-status" id="ai-status">▼ Megmutat</span>
+    </div>
+    <div class="ai-parse-body" id="ai-parse-body">
+      ${rows}
+      <button class="ai-apply-all-btn" id="ai-apply-all" onclick="applyAllAIChanges()">⚡ Mind alkalmazása</button>
+    </div>
+  </div>`;
+
+  // Store changes for apply
+  window._aiCurrentChanges = changes;
+  window._aiApplied = new Array(changes.length).fill(false);
+}
+
+function toggleAIPanel() {
+  const body = document.getElementById('ai-parse-body');
+  const status = document.getElementById('ai-status');
+  if (!body) return;
+  const hidden = body.style.display === 'none';
+  body.style.display = hidden ? '' : 'none';
+  if (status) status.textContent = hidden ? '▲ Összezár' : '▼ Megmutat';
+}
+
+function applyAIChange(idx) {
+  const changes = window._aiCurrentChanges || [];
+  const c = changes[idx];
+  if (!c || window._aiApplied[idx]) return;
+
+  applySingleChange(c);
+  window._aiApplied[idx] = true;
+
+  const btn = document.getElementById('ai-btn-' + idx);
+  if (btn) { btn.textContent = '✓ Kész'; btn.disabled = true; }
+
+  // Check if all applied
+  if (window._aiApplied.every(Boolean)) {
+    const allBtn = document.getElementById('ai-apply-all');
+    if (allBtn) { allBtn.textContent = '✓ Mind alkalmazva'; allBtn.disabled = true; }
+  }
+}
+
+function applyAllAIChanges() {
+  const changes = window._aiCurrentChanges || [];
+  changes.forEach((c, i) => {
+    if (!window._aiApplied[i]) {
+      applySingleChange(c);
+      window._aiApplied[i] = true;
+      const btn = document.getElementById('ai-btn-' + i);
+      if (btn) { btn.textContent = '✓ Kész'; btn.disabled = true; }
+    }
+  });
+  const allBtn = document.getElementById('ai-apply-all');
+  if (allBtn) { allBtn.textContent = '✓ Mind alkalmazva'; allBtn.disabled = true; }
+}
+
+function applySingleChange(c) {
+  const amt = c.amount || 0;
+  switch(c.type) {
+    case 'stamina':
+      state.stamina = Math.max(0, Math.min(state.staminaMax, state.stamina + amt));
+      notify(`Életerő: ${state.stamina > 0 ? (amt >= 0 ? '+' : '') + amt : 'elfogyott!'}`);
+      break;
+    case 'skill':
+      state.skill = Math.max(0, Math.min(state.skillMax, state.skill + amt));
+      notify(`Ügyesség: ${(amt >= 0 ? '+' : '') + amt} → ${state.skill}`);
+      break;
+    case 'luck':
+      // Luck can go above max (e.g. "adj 3-at Szerencséhez")
+      state.luck = Math.max(0, state.luck + amt);
+      state.luckMax = Math.max(state.luckMax, state.luck);
+      notify(`Szerencse: ${(amt >= 0 ? '+' : '') + amt} → ${state.luck}`);
+      break;
+    case 'gold':
+      state.gold = Math.max(0, (state.gold || 0) + amt);
+      notify(`Arany: ${(amt >= 0 ? '+' : '') + amt} → ${state.gold} 🪙`);
+      break;
+    case 'food':
+      state.food = Math.max(0, Math.min(10, state.food + amt));
