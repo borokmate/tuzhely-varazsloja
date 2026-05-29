@@ -418,3 +418,203 @@ function applySingleChange(c) {
       break;
     case 'food':
       state.food = Math.max(0, Math.min(10, state.food + amt));
+      notify(`Élelmiszer: ${(amt >= 0 ? '+' : '') + amt} → ${state.food}`);
+      break;
+    case 'item_add':
+      if (!state.items) state.items = [];
+      if (c.itemName) {
+        state.items.push(c.itemName);
+        notify(`🎒 Felvéve: ${c.itemName}`);
+      }
+      break;
+    case 'item_remove':
+      if (state.items && c.itemName) {
+        const idx = state.items.findIndex(it => it.toLowerCase().includes((c.itemName || '').toLowerCase().slice(0, 6)));
+        if (idx >= 0) state.items.splice(idx, 1);
+      }
+      notify(`Eldobva: ${c.itemName}`);
+      break;
+  }
+  updateSidebar();
+  saveState();
+}
+
+function histJump(n) {
+  state.history.push(state.current);
+  renderSection(n);
+}
+
+function eat() {
+  if (state.food <= 0) return;
+  if (state.stamina >= state.staminaMax) { notify('Életerőd már teljes!'); return; }
+  state.food--;
+  state.stamina = Math.min(state.staminaMax, state.stamina + 4);
+  updateSidebar();
+  saveState();
+  notify('Ettél! +4 Életerő ✓');
+}
+
+function usePotion() {
+  if (state.potionUses <= 0) return;
+  state.potionUses--;
+  if (state.potion === 'skill') {
+    state.skill = state.skillMax;
+    notify('Ügyességed visszaállt! (' + state.skill + ')');
+  } else if (state.potion === 'stamina') {
+    state.stamina = state.staminaMax;
+    notify('Életerőd visszaállt! (' + state.stamina + ')');
+  } else {
+    state.luck = state.luckMax + 1;
+    state.luckMax++;
+    notify('Szerencséd visszaállt és +1! (' + state.luck + ')');
+  }
+  updateSidebar();
+  saveState();
+}
+
+// ===== GOLD & ITEMS =====
+function modGold(delta) {
+  state.gold = Math.max(0, (state.gold || 0) + delta);
+  updateSidebar();
+  saveState();
+}
+
+function addGoldInput() {
+  const inp = document.getElementById('gold-input');
+  const v = parseInt(inp.value);
+  if (!isNaN(v)) {
+    state.gold = Math.max(0, (state.gold || 0) + v);
+    inp.value = '';
+    updateSidebar();
+    saveState();
+    notify(`Arany: ${state.gold} 🪙`);
+  }
+}
+
+function addItem() {
+  const inp = document.getElementById('item-input');
+  const val = inp.value.trim();
+  if (!val) return;
+  if (!state.items) state.items = [];
+  state.items.push(val);
+  inp.value = '';
+  updateSidebar();
+  saveState();
+  notify(`Felvéve: ${val}`);
+}
+
+function removeItem(idx) {
+  if (!state.items) return;
+  const name = state.items[idx];
+  state.items.splice(idx, 1);
+  updateSidebar();
+  saveState();
+  notify(`Eldobva: ${name}`);
+}
+
+// ===== STORY LUCK TEST =====
+function storyTestLuck() {
+  const roll = d6() + d6();
+  const lucky = roll <= state.luck;
+  const prev = state.luck;
+  state.luck = Math.max(0, state.luck - 1);
+  updateSidebar();
+  saveState();
+
+  const luckArea = document.getElementById('story-luck-area');
+  const cls = lucky ? 'good' : 'bad';
+  const txt = lucky
+    ? `⚡ Szerencsés! (dobás: ${roll} ≤ ${prev}) — Szerencse: ${state.luck}`
+    : `💀 Balszerencse! (dobás: ${roll} > ${prev}) — Szerencse: ${state.luck}`;
+  luckArea.innerHTML = `<div class="luck-result-inline ${cls}">${txt}</div>
+    <button class="story-luck-btn" onclick="storyTestLuck()">⚡ Ismét próbára teszi Szerencséjét (${state.luck})</button>`;
+}
+
+// ===== DICE =====
+function d6() { return Math.floor(Math.random() * 6) + 1; }
+
+function rollDice(n) {
+  const btn = event.target;
+  btn.classList.add('rolling');
+  setTimeout(() => btn.classList.remove('rolling'), 350);
+
+  let results = [];
+  for (let i = 0; i < n; i++) results.push(d6());
+  const total = results.reduce((a,b) => a+b, 0);
+  document.getElementById('dice-display').textContent = n === 1 ? results[0] : total;
+  document.getElementById('dice-sub').textContent = n > 1 ? results.join(' + ') : '';
+}
+
+function testLuck() {
+  const btn = event.target;
+  btn.classList.add('rolling');
+  setTimeout(() => btn.classList.remove('rolling'), 350);
+
+  const roll = d6() + d6();
+  const lucky = roll <= state.luck;
+  document.getElementById('dice-display').textContent = roll;
+  document.getElementById('dice-sub').textContent = lucky ? '😊 Szerencsés!' : '😟 Balszerencse';
+
+  state.luck = Math.max(0, state.luck - 1);
+  updateSidebar();
+  saveState();
+  notify(lucky ? `Szerencsés vagy! (${roll} ≤ ${state.luck+1}) -1 Szerencse` : `Balszerencse! (${roll} > ${state.luck+1}) -1 Szerencse`, !lucky);
+}
+
+// ===== SAVE/LOAD =====
+function saveState() {
+  try {
+    localStorage.setItem('tuzhegy_state', JSON.stringify(state));
+  } catch(e) {}
+}
+
+function loadState() {
+  try {
+    const s = localStorage.getItem('tuzhegy_state');
+    if (s) {
+      const loaded = JSON.parse(s);
+      state = { ...state, ...loaded };
+      if (!state.items) state.items = [];
+      if (state.gold === undefined) state.gold = 0;
+      return true;
+    }
+  } catch(e) {}
+  return false;
+}
+
+// ===== RULES =====
+function renderRules() {
+  const rules = `<h2>Ügyesség, Életerő és Szerencse</h2>
+<p>Mielőtt belevágnál a kalandba, fel kell mérned alapjellemzőidet:</p>
+<p><strong>Ügyesség:</strong> Dobj 1 kockával, adj 6-ot az eredményhez. Ez kardvívó tudásodat jelzi.</p>
+<p><strong>Életerő:</strong> Dobj 2 kockával, adj 12-t az eredményhez. Ez kondíciódat és túlélési képességedet mutatja.</p>
+<p><strong>Szerencse:</strong> Dobj 1 kockával, adj 6-ot az eredményhez. Minél magasabb, annál szerencsésebb vagy.</p>
+
+<h2>A Csata menete</h2>
+<p>1. Dobj 2d6-ot az ellenség nevében → + ellenség Ügyessége = ellenség Támadóereje</p>
+<p>2. Dobj 2d6-ot magadnak → + saját Ügyesség = a te Támadóerőd</p>
+<p>3. A nagyobb Támadóerejű fél sebet ejt (−2 Életerő a másiknak)</p>
+<p>4. Folytatás, amíg valaki Életereje el nem fogy</p>
+
+<h2>Szerencse próbája</h2>
+<p>Dobj 2d6-ot. Ha az eredmény ≤ Szerencsédnek, szerencsés vagy. Minden próba után −1 Szerencse.</p>
+<p><strong>Csatában:</strong> Ha te sebzel → Szerencsés: −2 extra Életerő az ellenségnek, Balszerencsés: +1 Életerő vissza. Ha te sérülsz → Szerencsés: csak −1 Életerő, Balszerencsés: −3 Életerő.</p>
+
+<h2>Élelmiszer</h2>
+<p>10 adagod van. Bármikor ehetsz (harc közben nem) → +4 Életerő, −1 adag. Az Életerő nem haladhatja meg a kezdeti értéket.</p>
+
+<h2>Varázsbájital</h2>
+<p>Kaland elején választasz egyet (2 adag): Ügyesség Itala, Erő Itala, vagy Szerencse Itala. Bármikor ihatsz belőle (harc közben nem).</p>
+
+<h2>Menekülés</h2>
+<p>Ha az oldal megengedi, meneküléssel feladsz egy csatát — az ellenfél ekkor automatikusan −2 Életerőt okoz neked. Menekülni általában a 2. forduló után lehet.</p>
+
+<h2>Arany és Felszerelés</h2>
+<p>Az oldalsávban nyomon követheted aranyad és tárgyaid listáját. A tárgyakat te adod hozzá és távolítod el, a szöveg utasításai szerint. Az aranyat a ± gombokkal vagy a beviteli mezővel módosíthatod.</p>
+
+<h2>Tedd próbára Szerencséd (a történetben)</h2>
+<p>Ha a szöveg azt mondja: „Tedd próbára Szerencséd", használd a story alján megjelenő ⚡ gombot. Ez 2d6-ot dob, és ha az eredmény ≤ jelenlegi Szerencséd, szerencsés vagy. Minden próba −1 Szerencse.</p>`;
+
+  document.getElementById('rules-text').innerHTML = rules;
+}
+
