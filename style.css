@@ -478,3 +478,173 @@ h1 {
 }
 .ending-banner h2 { font-size: 1.4rem; margin-bottom: 8px; letter-spacing: 0.1em; }
 .ending-banner p { font-family: 'Crimson Pro', serif; font-size: 0.9rem; opacity: 0.8; margin-bottom: 14px; }
+
+/* ===== SIDEBAR ===== */
+#sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: sticky;
+  top: 20px;
+}
+
+.panel {
+  background: rgba(20,14,6,0.9);
+  border: 1px solid var(--stone);
+  padding: 16px;
+}
+.panel-title {
+  font-family: 'Cinzel', serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.25em;
+  color: var(--gold);
+  text-transform: uppercase;
+  margin-bottom: 14px;
+  opacity: 0.8;
+}
+
+/* Stat bars */
+.stat-bar-row {
+  margin-bottom: 12px;
+}
+.stat-bar-label {
+  display: flex;
+  justify-content: space-between;
+  font-family: 'Cinzel', serif;
+  font-size: 0.75rem;
+  color: var(--parchment-dark);
+  margin-bottom: 4px;
+  letter-spacing: 0.05em;
+}
+.stat-bar-label .sv {
+  color: var(--gold-light);
+  font-weight: 600;
+}
+.bar-bg {
+  height: 6px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  position: relative;
+  overflow: hidden;
+}
+.bar-fill {
+  height: 100%;
+  transition: width 0.4s ease;
+}
+.bar-fill.skill { background: linear-gradient(90deg, #2a6496, #4a9fc8); }
+.bar-fill.stamina { background: linear-gradient(90deg, #7a1a1a, #c0392b); }
+.bar-fill.luck { background: linear-gradient(90deg, #6a5a00, #c9a227); }
+
+/* Stat controls */
+.stat-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+.sc-btn {
+  background: var(--stone);
+  border: 1px solid var(--stone-light);
+  color: var(--parchment-dark);
+  width: 22px;
+  height: 22px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.sc-btn:hover { background: var(--red); border-color: var(--red-bright); }
+
+/* Dice roller */
+.dice-area {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dice-result {
+  text-align: center;
+  font-family: 'Cinzel', serif;
+  font-size: 2rem;
+  font-weight: 900;
+  color: var(--gold-light);
+  min-height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-shadow: 0 0 10px rgba(201,162,39,0.4);
+}
+.dice-sub {
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--stone-light);
+  font-family: 'Cinzel', serif;
+  letter-spacing: 0.1em;
+  min-height: 16px;
+}
+.dice-btns {
+  display: flex;
+  gap: 8px;
+}
+.dice-roll-btn {
+  flex: 1;
+  padding: 8px 4px;
+  background: rgba(30,22,10,0.8);
+  border: 1px solid var(--stone);
+  color: var(--parchment-dark);
+  cursor: pointer;
+  font-family: 'Cinzel', serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  text-align: center;
+  transition: all 0.2s;
+}
+.dice-roll-btn:hover { border-color: var(--gold); color: var(--gold-light); background: rgba(201,162,39,0.1); }
+.dice-roll-btn.rolling { animation: diceShake 0.3s ease; }
+@keyframes diceShake {
+  0%,100%{transform:rotate(0) scale(1)}
+  25%{transform:rotate(-5deg) scale(0.95)}
+  75%{transform:rotate(5deg) scale(1.05)}
+}
+
+/* History */
+.history-list {
+  max-height: 140px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--stone) transparent;
+}
+.history-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+  font-size: 0.85rem;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+.history-item:hover { opacity: 1; color: var(--gold-light); }
+.history-num {
+  font-family: 'Cinzel', serif;
+  font-size: 0.75rem;
+  color: var(--ember);
+  min-width: 28px;
+}
+
+/* Food */
+.food-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.food-icons { display: flex; gap: 3px; flex-wrap: wrap; }
+.food-icon { font-size: 1rem; cursor: default; }
+.food-icon.used { opacity: 0.25; }
+.eat-btn {
+  background: rgba(30,22,10,0.8);
+  border: 1px solid var(--stone);
