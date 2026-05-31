@@ -618,3 +618,163 @@ function renderRules() {
   document.getElementById('rules-text').innerHTML = rules;
 }
 
+// ===== NOTIFICATIONS =====
+let notifTimer;
+function notify(msg, isError = false) {
+  const el = document.getElementById('notification');
+  el.textContent = msg;
+  el.className = 'show' + (isError ? ' error' : '');
+  clearTimeout(notifTimer);
+  notifTimer = setTimeout(() => el.className = '', 3000);
+}
+
+// ===== SIDEBAR TOGGLE (mobile) =====
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+}
+
+// ===== INIT =====
+window.onload = function() {
+  const hasSave = loadState();
+  if (hasSave && state.skill > 0) {
+    document.getElementById('continue-btn').style.display = '';
+  }
+
+  // Check if setup was done properly
+  if (hasSave && state.skill > 0) {
+    // State looks valid
+  }
+};
+
+// ===== COMBAT SYSTEM =====
+let combat = {
+  active: false,
+  enemies: [],         // [{name, skill, stamina, maxStamina, dead}]
+  currentEnemyIdx: 0,
+  round: 1,
+  canFlee: false,
+  fleeAfterRound: 2,
+  lastResult: null,    // 'playerHit' | 'enemyHit' | 'tie'
+  awaitingLuck: false,
+  onVictory: null,     // callback
+  onDefeat: null,
+};
+
+function startCombat(enemies, canFlee, fleeAfterRound) {
+  // enemies = [{name, skill, stamina}]
+  combat.enemies = enemies.map(e => ({
+    ...e,
+    maxStamina: e.stamina,
+    dead: false
+  }));
+  combat.currentEnemyIdx = 0;
+  combat.round = 1;
+  combat.canFlee = canFlee !== false;
+  combat.fleeAfterRound = fleeAfterRound || 2;
+  combat.lastResult = null;
+  combat.awaitingLuck = false;
+  combat.active = true;
+
+  document.getElementById('combat-log').innerHTML = '';
+  document.getElementById('combat-result').className = 'combat-result-banner';
+  document.getElementById('combat-roll-btn').disabled = false;
+  document.getElementById('combat-roll-btn').style.display = '';
+  document.getElementById('combat-close-btn').style.display = 'none';
+  document.getElementById('combat-luck-atk').style.display = 'none';
+  document.getElementById('combat-luck-def').style.display = 'none';
+  document.getElementById('combat-flee-btn').style.display = 'none';
+
+  // Tabs for multiple enemies
+  const tabsDiv = document.getElementById('enemy-tabs');
+  if (enemies.length > 1) {
+    tabsDiv.style.display = 'flex';
+    tabsDiv.innerHTML = enemies.map((e, i) =>
+      `<button class="enemy-tab${i===0?' active':''}" id="etab-${i}" onclick="switchEnemy(${i})">${e.name}</button>`
+    ).join('');
+  } else {
+    tabsDiv.style.display = 'none';
+  }
+
+  updateCombatUI();
+  document.getElementById('combat-overlay').classList.add('active');
+  addLog(`⚔ Harc kezdődik! ${enemies.map(e=>e.name).join(', ')} ellen.`, 'system');
+}
+
+function switchEnemy(idx) {
+  if (combat.enemies[idx].dead) return;
+  combat.currentEnemyIdx = idx;
+  document.querySelectorAll('.enemy-tab').forEach((t,i) => {
+    t.className = 'enemy-tab' + (combat.enemies[i].dead ? ' dead-tab' : '') + (i===idx ? ' active' : '');
+  });
+  updateCombatUI();
+}
+
+function updateCombatUI() {
+  const enemy = combat.enemies[combat.currentEnemyIdx];
+  const pskill = state.skill, pstam = state.stamina;
+  const eskill = enemy.skill, estam = enemy.stamina;
+
+  document.getElementById('cf-pskill').textContent = pskill;
+  document.getElementById('cf-pstamina').textContent = pstam + '/' + state.staminaMax;
+  document.getElementById('cf-pstamina').className = 'val' + (pstam <= 3 ? ' low' : '');
+
+  document.getElementById('cf-ename').textContent = enemy.name;
+  document.getElementById('cf-eskill').textContent = eskill;
+  document.getElementById('cf-estamina').textContent = estam + '/' + enemy.maxStamina;
+  document.getElementById('cf-estamina').className = 'val' + (estam <= 2 ? ' low' : '');
+  // HP bar for enemy
+  const hpPct = enemy.maxStamina > 0 ? Math.max(0, Math.round(estam/enemy.maxStamina*100)) : 0;
+  const hpBar = document.getElementById('cf-ehpbar');
+  if (hpBar) hpBar.style.width = hpPct + '%';
+
+  document.getElementById('combat-round-label').textContent = combat.round + '. forduló';
+
+  if (combat.canFlee && combat.round >= combat.fleeAfterRound) {
+    document.getElementById('combat-flee-btn').style.display = '';
+  }
+
+  // Update sidebar stats too
+  updateSidebar();
+}
+
+function addLog(msg, type) {
+  const log = document.getElementById('combat-log');
+  const div = document.createElement('div');
+  div.className = 'log-entry ' + (type || '');
+  div.textContent = msg;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+
+function combatRound() {
+  if (!combat.active) return;
+  const enemy = combat.enemies[combat.currentEnemyIdx];
+  if (enemy.dead) {
+    // Find next living enemy
+    const next = combat.enemies.findIndex((e,i) => !e.dead && i !== combat.currentEnemyIdx);
+    if (next >= 0) { switchEnemy(next); return; }
+    endCombat(true);
+    return;
+  }
+
+  // Rolls
+  const pd1 = d6(), pd2 = d6();
+  const ed1 = d6(), ed2 = d6();
+  const pAtk = pd1 + pd2 + state.skill;
+  const eAtk = ed1 + ed2 + enemy.skill;
+
+  // Show rolls
+  document.getElementById('cf-pattack').textContent = `${pd1}+${pd2}+${state.skill} = ${pAtk}`;
+  document.getElementById('cf-eattack').textContent = `${ed1}+${ed2}+${enemy.skill} = ${eAtk}`;
+
+  combat.lastPAtk = pAtk;
+  combat.lastEAtk = eAtk;
+
+  // Hide luck buttons first
+  document.getElementById('combat-luck-atk').style.display = 'none';
+  document.getElementById('combat-luck-def').style.display = 'none';
+  document.getElementById('combat-roll-btn').disabled = true;
+
+  if (pAtk > eAtk) {
+    // Player hits enemy
+    enemy.stamina -= 2;
