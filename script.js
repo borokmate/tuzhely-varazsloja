@@ -778,3 +778,123 @@ function combatRound() {
   if (pAtk > eAtk) {
     // Player hits enemy
     enemy.stamina -= 2;
+    document.getElementById('cf-pattack').className = 'attack-bar win';
+    document.getElementById('cf-eattack').className = 'attack-bar lose';
+    addLog(`✓ Megsebesíted: ${enemy.name} (−2 Életerő → ${enemy.stamina})`, 'hit-enemy');
+    combat.lastResult = 'playerHit';
+    const enemyAlive = !checkEnemyDead();
+    if (enemyAlive && combat.active) {
+      // Show luck button — Roll btn stays DISABLED until luck is decided or skipped
+      document.getElementById('combat-luck-atk').style.display = '';
+      document.getElementById('combat-luck-skip').style.display = '';
+      // Roll btn remains disabled
+    }
+  } else if (eAtk > pAtk) {
+    // Enemy hits player
+    state.stamina -= 2;
+    document.getElementById('cf-pattack').className = 'attack-bar lose';
+    document.getElementById('cf-eattack').className = 'attack-bar win';
+    addLog(`✗ ${enemy.name} megsebesít (−2 Életerő → ${state.stamina})`, 'hit-player');
+    combat.lastResult = 'enemyHit';
+    const playerAlive = !checkPlayerDead();
+    if (playerAlive && combat.active) {
+      // Show luck button — Roll btn stays DISABLED until luck is decided or skipped
+      document.getElementById('combat-luck-def').style.display = '';
+      document.getElementById('combat-luck-skip').style.display = '';
+      // Roll btn remains disabled
+    }
+  } else {
+    // Tie - neither is wounded (FF rule: döntetlen = semmi sem történik)
+    document.getElementById('cf-pattack').className = 'attack-bar tie';
+    document.getElementById('cf-eattack').className = 'attack-bar tie';
+    addLog(`↔ Döntetlen – kivédtétek egymás csapását`, 'miss');
+    combat.lastResult = 'tie';
+    nextRound();
+  }
+
+  updateCombatUI();
+}
+
+function useLuckInCombat(mode) {
+  document.getElementById('combat-luck-atk').style.display = 'none';
+  document.getElementById('combat-luck-def').style.display = 'none';
+  document.getElementById('combat-luck-skip').style.display = 'none';
+
+  const roll = d6() + d6();
+  const lucky = roll <= state.luck;
+  state.luck = Math.max(0, state.luck - 1);
+  addLog(`⚡ Szerencse-próba: ${roll} vs ${state.luck+1} → ${lucky ? 'SZERENCSÉS!' : 'BALSZERENCSE'}`, lucky ? 'hit-enemy' : 'hit-player');
+
+  const enemy = combat.enemies[combat.currentEnemyIdx];
+
+  if (mode === 'attack') {
+    if (lucky) {
+      enemy.stamina -= 2; // extra 2 damage (total -4)
+      addLog(`💥 Súlyos seb! +2 extra → ${enemy.name} Életerő: ${enemy.stamina}`, 'hit-enemy');
+    } else {
+      enemy.stamina += 1; // restore 1 (net -1 instead of -2)
+      addLog(`😟 Karcolás – visszaad 1 Életerőt: ${enemy.name} → ${enemy.stamina}`, 'hit-player');
+    }
+    checkEnemyDead();
+  } else { // defend
+    if (lucky) {
+      state.stamina += 1; // restore 1 (net -1 instead of -2)
+      addLog(`🛡 Kitértél! +1 Életerő visszakap → ${state.stamina}`, 'hit-enemy');
+    } else {
+      state.stamina -= 1; // extra -1 (net -3)
+      addLog(`😱 Súlyos találat! −1 extra Életerő → ${state.stamina}`, 'hit-player');
+    }
+    checkPlayerDead();
+  }
+
+  updateCombatUI();
+  if (combat.active) nextRound();
+}
+
+function checkEnemyDead() {
+  const enemy = combat.enemies[combat.currentEnemyIdx];
+  if (enemy.stamina <= 0) {
+    enemy.stamina = 0;
+    enemy.dead = true;
+    addLog(`💀 ${enemy.name} elesett!`, 'victory');
+    // Update tab
+    const tab = document.getElementById('etab-' + combat.currentEnemyIdx);
+    if (tab) tab.className = 'enemy-tab dead-tab';
+
+    // Check all dead
+    const allDead = combat.enemies.every(e => e.dead);
+    if (allDead) {
+      endCombat(true);
+    } else {
+      // Switch to next living
+      const next = combat.enemies.findIndex(e => !e.dead);
+      if (next >= 0) {
+        setTimeout(() => {
+          switchEnemy(next);
+          addLog(`→ Következő ellenfél: ${combat.enemies[next].name}`, 'system');
+        }, 300);
+      }
+      if (!combat.awaitingLuck) nextRound();
+    }
+    return true;
+  }
+  return false;
+}
+
+function checkPlayerDead() {
+  if (state.stamina <= 0) {
+    state.stamina = 0;
+    endCombat(false);
+    return true;
+  }
+  return false;
+}
+
+function skipLuck() {
+  // Player chose not to use luck — hide buttons, advance to next round
+  document.getElementById('combat-luck-atk').style.display = 'none';
+  document.getElementById('combat-luck-def').style.display = 'none';
+  document.getElementById('combat-luck-skip').style.display = 'none';
+  addLog('— Szerencse kihagyva', 'miss');
+  if (combat.active) nextRound();
+}
