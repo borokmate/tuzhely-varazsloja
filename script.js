@@ -898,3 +898,85 @@ function skipLuck() {
   addLog('— Szerencse kihagyva', 'miss');
   if (combat.active) nextRound();
 }
+
+function nextRound() {
+  combat.round++;
+  combat.lastResult = null;
+  document.getElementById('combat-roll-btn').disabled = false;
+  document.getElementById('combat-luck-atk').style.display = 'none';
+  document.getElementById('combat-luck-def').style.display = 'none';
+  document.getElementById('cf-pattack').className = 'attack-bar';
+  document.getElementById('cf-eattack').className = 'attack-bar';
+  document.getElementById('cf-pattack').textContent = '—';
+  document.getElementById('cf-eattack').textContent = '—';
+  if (combat.canFlee && combat.round >= combat.fleeAfterRound) {
+    document.getElementById('combat-flee-btn').style.display = '';
+  }
+  updateCombatUI();
+}
+
+function fleeCombat() {
+  if (!combat.canFlee || combat.round < combat.fleeAfterRound) return;
+  state.stamina = Math.max(0, state.stamina - 2);
+  addLog(`🏃 Menekülsz! −2 Életerő büntetés → ${state.stamina}`, 'defeat');
+  combat.active = false;
+  document.getElementById('combat-roll-btn').style.display = 'none';
+  document.getElementById('combat-flee-btn').style.display = 'none';
+  document.getElementById('combat-luck-atk').style.display = 'none';
+  document.getElementById('combat-luck-def').style.display = 'none';
+  const res = document.getElementById('combat-result');
+  res.className = 'combat-result-banner defeat';
+  res.innerHTML = '<h3>Menekülés!</h3><p>Gyávaságod árát megfizeted.</p>';
+  document.getElementById('combat-close-btn').style.display = '';
+  updateSidebar();
+  saveState();
+}
+
+function endCombat(victory) {
+  combat.active = false;
+  document.getElementById('combat-roll-btn').disabled = true;
+  document.getElementById('combat-roll-btn').style.display = 'none';
+  document.getElementById('combat-flee-btn').style.display = 'none';
+  document.getElementById('combat-luck-atk').style.display = 'none';
+  document.getElementById('combat-luck-def').style.display = 'none';
+
+  const res = document.getElementById('combat-result');
+  if (victory) {
+    res.className = 'combat-result-banner victory';
+    res.innerHTML = '<h3>🏆 Győzelem!</h3><p>Legyőzted ellenfeleidet!</p>';
+    addLog('⚔ Győzelem!', 'victory');
+  } else {
+    res.className = 'combat-result-banner defeat';
+    res.innerHTML = '<h3>💀 Vereség</h3><p>Életerőd elfogyott...</p>';
+    addLog('💀 Elesett a hős!', 'defeat');
+  }
+
+  document.getElementById('combat-close-btn').style.display = '';
+  updateSidebar();
+  saveState();
+}
+
+function closeCombat() {
+  document.getElementById('combat-overlay').classList.remove('active');
+  if (state.stamina <= 0) {
+    // Show death screen
+    const endDiv = document.getElementById('ending-area');
+    endDiv.innerHTML = `<div class="ending-banner death">
+      <h2>💀 Kalandod véget ért</h2>
+      <p>Életerőd elfogyott a harcban...</p>
+      <button class="btn btn-primary btn-small" onclick="confirmRestart()">Újra próbálkozol</button>
+    </div>`;
+    document.getElementById('choices').innerHTML = '';
+  }
+  updateSidebar();
+}
+
+// Button in story to open combat
+function openCombat(paraNum) {
+  const para = BOOK[String(paraNum)];
+  if (!para || !para.enemies || para.enemies.length === 0) return;
+  // Check if canFlee from this paragraph (has flee links)
+  const canFlee = para.links && para.links.length > 0;
+  startCombat(para.enemies.map(e => ({...e})), canFlee, 2);
+}
+
