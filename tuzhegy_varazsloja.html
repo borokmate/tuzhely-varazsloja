@@ -68,3 +68,230 @@
       <div class="stat-row">
         <span class="stat-label">Ügyesség</span>
         <span class="stat-value" id="s-skill">—</span>
+        <button class="dice-btn" onclick="rollStat('skill')">🎲 Dobj</button>
+        <small style="color:var(--stone-light);font-size:0.75rem">1d6 + 6</small>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Életerő</span>
+        <span class="stat-value" id="s-stamina">—</span>
+        <button class="dice-btn" onclick="rollStat('stamina')">🎲 Dobj</button>
+        <small style="color:var(--stone-light);font-size:0.75rem">2d6 + 12</small>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Szerencse</span>
+        <span class="stat-value" id="s-luck">—</span>
+        <button class="dice-btn" onclick="rollStat('luck')">🎲 Dobb</button>
+        <small style="color:var(--stone-light);font-size:0.75rem">1d6 + 6</small>
+      </div>
+      <button class="btn btn-secondary btn-small" onclick="rollAll()" style="margin-top:10px">🎲 Mind egyszerre</button>
+    </div>
+
+    <div class="setup-panel">
+      <h3>Varázsbájital</h3>
+      <div class="potion-options" id="potion-opts">
+        <div class="potion-opt selected" data-potion="skill" onclick="selectPotion(this,'skill')">
+          <div class="pot-name">Ügyesség Itala</div>
+          <div class="pot-desc">Visszaállítja az Ügyességet</div>
+        </div>
+        <div class="potion-opt" data-potion="stamina" onclick="selectPotion(this,'stamina')">
+          <div class="pot-name">Erő Itala</div>
+          <div class="pot-desc">Visszaállítja az Életerőt</div>
+        </div>
+        <div class="potion-opt" data-potion="luck" onclick="selectPotion(this,'luck')">
+          <div class="pot-name">Szerencse Itala</div>
+          <div class="pot-desc">Visszaállítja +1 Szerencsét</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align:center;margin-top:20px;display:flex;gap:12px;justify-content:center">
+      <button class="btn btn-primary" id="start-btn" onclick="startGame()" disabled>Kalandba indul →</button>
+      <button class="btn btn-secondary" onclick="showScreen('menu')">← Vissza</button>
+    </div>
+  </div>
+
+  <!-- RULES SCREEN -->
+  <div id="rules-screen" class="screen">
+    <div class="divider"><span class="divider-sym">📜</span></div>
+    <div class="rules-content" id="rules-text"></div>
+    <div class="rules-back"><button class="btn btn-secondary" onclick="showScreen('menu')">← Vissza</button></div>
+  </div>
+
+  <!-- GAME SCREEN -->
+  <div id="game-screen" class="screen">
+    <div id="story-panel">
+      <div class="story-header">
+        <div>
+          <div class="para-label">Bekezdés</div>
+          <div class="para-number" id="para-num">1</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn-secondary btn-small" onclick="goBack()" id="back-btn" disabled>← Vissza</button>
+          <button class="btn btn-secondary btn-small" onclick="confirmRestart()">↺ Újra</button>
+        </div>
+      </div>
+      <div id="story-text"></div>
+      <div id="enemy-display"></div>
+      <div id="choices"></div>
+      <div id="ai-parse-area"></div>
+      <div id="story-luck-area"></div>
+      <div id="ending-area"></div>
+    </div>
+
+    <div id="sidebar">
+      <!-- Stats -->
+      <div class="panel">
+        <div class="panel-title">Kalandos</div>
+        <div class="stat-bar-row">
+          <div class="stat-bar-label">Ügyesség <span class="sv" id="g-skill">—</span></div>
+          <div class="bar-bg"><div class="bar-fill skill" id="bar-skill" style="width:0%"></div></div>
+          <div class="stat-controls">
+            <button class="sc-btn" onclick="modStat('skill',-1)">−</button>
+            <button class="sc-btn" onclick="modStat('skill',+1)">+</button>
+          </div>
+        </div>
+        <div class="stat-bar-row">
+          <div class="stat-bar-label">Életerő <span class="sv" id="g-stamina">—</span></div>
+          <div class="bar-bg"><div class="bar-fill stamina" id="bar-stamina" style="width:0%"></div></div>
+          <div class="stat-controls">
+            <button class="sc-btn" onclick="modStat('stamina',-1)">−</button>
+            <button class="sc-btn" onclick="modStat('stamina',+1)">+</button>
+          </div>
+        </div>
+        <div class="stat-bar-row">
+          <div class="stat-bar-label">Szerencse <span class="sv" id="g-luck">—</span></div>
+          <div class="bar-bg"><div class="bar-fill luck" id="bar-luck" style="width:0%"></div></div>
+          <div class="stat-controls">
+            <button class="sc-btn" onclick="modStat('luck',-1)">−</button>
+            <button class="sc-btn" onclick="modStat('luck',+1)">+</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dice -->
+      <div class="panel">
+        <div class="panel-title">Kocka</div>
+        <div class="dice-area">
+          <div class="dice-result" id="dice-display">—</div>
+          <div class="dice-sub" id="dice-sub"></div>
+          <div class="dice-btns">
+            <button class="dice-roll-btn" onclick="rollDice(1)">1d6</button>
+            <button class="dice-roll-btn" onclick="rollDice(2)">2d6</button>
+            <button class="dice-roll-btn" onclick="testLuck()">⚡ Szerencse</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Food -->
+      <div class="panel">
+        <div class="panel-title">Élelmiszer</div>
+        <div class="food-row">
+          <div class="food-icons" id="food-icons"></div>
+          <span id="food-count" style="font-family:'Cinzel',serif;font-size:0.8rem;color:var(--stone-light)"></span>
+        </div>
+        <button class="eat-btn" id="eat-btn" onclick="eat()">Étkezés (+4 Életerő)</button>
+      </div>
+
+      <!-- Potion -->
+      <div class="panel" id="potion-panel">
+        <div class="panel-title">Varázsbájital</div>
+        <div class="potion-info" id="potion-name">—</div>
+        <div class="potion-uses" id="potion-uses">2 adag maradt</div>
+        <button class="use-potion-btn" id="use-potion-btn" onclick="usePotion()">Iszik a bájitalból</button>
+      </div>
+
+      <!-- Gold & Items -->
+      <div class="panel">
+        <div class="panel-title">Arany & Felszerelés</div>
+        <div class="gold-row">
+          <div>
+            <div style="font-family:'Cinzel',serif;font-size:0.7rem;color:var(--stone-light);margin-bottom:3px;">ARANY</div>
+            <div class="gold-val">🪙 <span id="g-gold">0</span></div>
+          </div>
+          <div class="gold-controls">
+            <button class="sc-btn" onclick="modGold(-1)">−</button>
+            <input type="number" class="gold-input" id="gold-input" min="0" placeholder="±">
+            <button class="sc-btn" onclick="addGoldInput()">+</button>
+          </div>
+        </div>
+        <div class="items-list" id="items-list"></div>
+        <div class="add-item-row">
+          <input type="text" class="item-input" id="item-input" placeholder="Tárgy neve…" maxlength="40">
+          <button class="item-add-btn" onclick="addItem()">+ Hozzáad</button>
+        </div>
+      </div>
+
+      <!-- Navigation -->
+      <div class="panel">
+        <div class="panel-title">Ugrás</div>
+        <div class="goto-row">
+          <input type="number" class="goto-input" id="goto-input" min="1" max="400" placeholder="1-400">
+          <button class="goto-btn" onclick="gotoSection()">Megy →</button>
+        </div>
+      </div>
+
+      <!-- History -->
+      <div class="panel">
+        <div class="panel-title">Útvonal</div>
+        <div class="history-list" id="history-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<button class="sidebar-toggle" onclick="toggleSidebar()">⚔</button>
+<div id="notification"></div>
+
+<!-- COMBAT OVERLAY -->
+<div id="combat-overlay">
+  <div id="combat-modal">
+    <div class="combat-header">
+      <div class="combat-title">⚔ Harc</div>
+      <div class="combat-round" id="combat-round-label">1. forduló</div>
+    </div>
+
+    <!-- Multi-enemy tabs (shown when >1 enemy) -->
+    <div class="enemy-tabs" id="enemy-tabs" style="display:none"></div>
+
+    <div class="combat-fighters">
+      <!-- Player -->
+      <div class="fighter-card player">
+        <div class="fighter-label">Hős</div>
+        <div class="fighter-name" id="cf-pname">Te</div>
+        <div class="fighter-stat">Ügyesség <span class="val" id="cf-pskill">—</span></div>
+        <div class="fighter-stat">Életerő <span class="val" id="cf-pstamina">—</span></div>
+        <div class="attack-bar" id="cf-pattack">—</div>
+      </div>
+
+      <!-- VS -->
+      <div class="vs-col"><div class="vs-sym">VS</div></div>
+
+      <!-- Enemy -->
+      <div class="fighter-card enemy-card" id="cf-ecard">
+        <div class="fighter-label">Ellenség</div>
+        <div class="fighter-name" id="cf-ename">—</div>
+        <div class="fighter-stat">Ügyesség <span class="val" id="cf-eskill">—</span></div>
+        <div class="fighter-stat">Életerő <span class="val" id="cf-estamina">—</span></div>
+        <div class="enemy-hp-bar-bg"><div class="enemy-hp-bar-fill" id="cf-ehpbar" style="width:100%"></div></div>
+        <div class="attack-bar" id="cf-eattack">—</div>
+      </div>
+    </div>
+
+    <div class="combat-log" id="combat-log"></div>
+
+    <div class="combat-result-banner" id="combat-result"></div>
+
+    <div class="combat-actions">
+      <button class="combat-btn combat-btn-main" id="combat-roll-btn" onclick="combatRound()">🎲 Forduló dobása</button>
+      <button class="combat-btn combat-btn-luck" id="combat-luck-atk" onclick="useLuckInCombat('attack')" style="display:none">⚡ Szerencse – Súlyosabb seb</button>
+      <button class="combat-btn combat-btn-luck" id="combat-luck-def" onclick="useLuckInCombat('defend')" style="display:none">⚡ Szerencse – Seb csökkentése</button>
+      <button class="combat-btn" id="combat-luck-skip" onclick="skipLuck()" style="display:none;opacity:0.55;font-size:0.72rem">— Kihagyom a Szerencsét</button>
+      <button class="combat-btn combat-btn-flee" id="combat-flee-btn" onclick="fleeCombat()" style="display:none">🏃 Menekülés (−2 Életerő büntetés)</button>
+      <button class="combat-btn combat-btn-flee" id="combat-close-btn" onclick="closeCombat()" style="display:none">✓ Bezár</button>
+    </div>
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
